@@ -1,7 +1,7 @@
 requests==2.27.1
-selenium==4.24.0
+selenium
 selenium_wire==5.1.0
-webdriver_manager==4.0.2
+webdriver_manager
 blinker==1.7.0
 setuptools==70.0.0
 PyQt6

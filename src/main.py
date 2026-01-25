@@ -1,6 +1,7 @@
+from os.path import exists
 import sys
 import json
-
+import run
 from PyQt6.QtGui import QTextBlock
 from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QTextEdit, QWidget, QLabel, QLineEdit, QSpinBox, QPushButton,
@@ -10,6 +11,7 @@ from PyQt6.QtCore import QProcess
 
 CONFIG_FILE_PATH = "data/config.json"
 
+sys.stdout.reconfigure(line_buffering=True)
 class JsonForm(QWidget):
     def __init__(self):
         super().__init__()
@@ -136,6 +138,8 @@ class JsonForm(QWidget):
                 json.dump(data, f, indent=4)
             QMessageBox.information(self, "Success", f"Saved to {filename}")
     def load_json(self):
+        if(exists(CONFIG_FILE_PATH)==False):
+            return
         data=json.load(open(CONFIG_FILE_PATH))
         print(data)
         self.username_edit.setText(data.get("account")["username"])
@@ -228,7 +232,18 @@ class MainWindow(QWidget):
         self.load_json()
     def start_ders_secici(self):
         self.output.append("starting itu-ders-secici")
-        self.process.start(sys.executable,["-u","src/run.py"])
+        
+        # Check if we are running as a frozen executable (PyInstaller)
+        if getattr(sys, 'frozen', False):
+            # Run "myself" (the exe) with the worker flag
+            executable = sys.executable
+            arguments = ["--worker"]
+        else:
+            # Run from source (python script)
+            executable = sys.executable
+            arguments = ["-u", "src/run.py"]
+            
+        self.process.start(executable, arguments)
     def handle_stdout(self):
         data = self.process.readAllStandardOutput().data().decode()
         self.output.append(data)
@@ -251,6 +266,8 @@ class MainWindow(QWidget):
             list_widget.takeItem(list_widget.row(item))
 
     def load_json(self):
+        if(exists(CONFIG_FILE_PATH)==False):
+            return
         data=json.load(open(CONFIG_FILE_PATH))
         self.username.setText(data.get("account")["username"])
         self.password.setText(data.get("account")["password"])
@@ -262,6 +279,21 @@ class MainWindow(QWidget):
         self.crn_list.addItems(data.get("courses")["crn"])
         self.scrn_list.addItems(data.get("courses")["scrn"])
 if __name__ == "__main__":
+    if "--worker" in sys.argv:
+        # PyInstaller --noconsole prevents stdout working by default. 
+        # We must restore it to pipe output back to the GUI.
+        if sys.stdout is None:
+            sys.stdout = open(1, 'w', encoding='utf-8', closefd=False)
+        if sys.stderr is None:
+            sys.stderr = open(2, 'w', encoding='utf-8', closefd=False)
+            
+        # Remove the flag so argparse in run.py doesn't crash
+        sys.argv.remove("--worker")
+        
+        # Run the logic
+        run.main()
+        sys.exit(0)
+
     app = QApplication(sys.argv)
     window = MainWindow()
     window.show()

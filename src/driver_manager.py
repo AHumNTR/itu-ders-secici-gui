@@ -22,7 +22,8 @@ class DriverManager:
         # chrome_options.add_argument("--no-proxy-server")
         chrome_options.add_experimental_option('excludeSwitches', ['enable-logging'])
 
-        driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=chrome_options)
+        driver = webdriver.Chrome(options=chrome_options)
+#service=Service(ChromeDriverManager().install()), options=chrome_options)
         DriverManager.active_drivers.append(driver)
         return driver
     
