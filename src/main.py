@@ -12,8 +12,10 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import QProcess
 
 CONFIG_FILE_PATH = "data/config.json"
-
-sys.stdout.reconfigure(line_buffering=True)
+if sys.stdout:
+    sys.stdout.reconfigure(encoding='utf-8', line_buffering=True)
+if sys.stderr:
+    sys.stderr.reconfigure(encoding='utf-8', line_buffering=True)
 class MainWindow(QWidget):
     def __init__(self):
         super().__init__()

@@ -9,6 +9,7 @@ from request_manager import RequestManager
 import os
 import argparse
 import json
+from sys import exit
 
 # === CONSTANTS ===
 CONFIG_FILE_PATH = "data/config.json"
@@ -172,6 +173,6 @@ def main():
     # Turn off the computer, if asked for it, else, just exit.
     Logger.log("Ders seçimi tamamlandı. Program sonlandırılıyor...")
     Logger.log("Program işinize yaradıysa GitHub'dan yıldız atmayı unutmayın ⭐")
-    exit()
+    sys.exit()
 if __name__ == "__main__":
     main()

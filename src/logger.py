@@ -27,7 +27,7 @@ class Logger:
             mkdir("logs")
         
         with open(f"logs/{file_name}.txt", "w", encoding="utf-8") as f:
-            f.write(Logger.logs + Logger.create_message("Çıktılar kaydediliyor...\n"))
+            f.write(Logger.logs + Logger.create_message("Ciktilar kaydediliyor...\n"))
 
     @staticmethod
     def save_logs_with_time_stamp() -> None:
