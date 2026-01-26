@@ -1,5 +1,5 @@
 # === IMPORTS ===
-from token_fetcher import TokenFetcher
+from token_fetcher import ContinuousTokenFetcher
 import requests
 from time import sleep
 from datetime import datetime, timedelta
@@ -21,6 +21,7 @@ COURSE_TIME_CHECK_URL = "https://obs.itu.edu.tr/api/ogrenci/Takvim/KayitZamaniKo
 DELAY_BETWEEN_TRIES = 3 # WARNING: If you want to tweak this value, decreasing it may cause you to hit the API rate limit.
 DELAY_BETWEEN_TIME_CHECKS = .1  # Determines how often the program will check if the course selection time has started, in seconds.
 SPAM_DUR = 60 * 10 # Deternimes how long the program will spam the API HTTP request, in seconds.
+MAX_EXTRA_WAIT_TIME = 60 * 2 # Determines the maximum extra time the program will wait for the course selection to start, in seconds.
 
 def read_inputs(test_mode: bool=False) -> tuple[str, str, list[str], list[str], datetime | None]:
     Logger.log("Input dosyaları okunuyor...")
@@ -98,9 +99,20 @@ def main():
             Logger.log(f"Ders seçimine 5 dakika kalana kadar bekleniyor ({delta} saniye)...")
             sleep(delta)
 
-    # Log into the website.
-    token_fetcher = TokenFetcher(TARGET_URL, login, password)
-    token_fetcher.start_driver()
+    # === MULTI-THREADED TOKEN FETCHING ===
+    # Start token fetcher (will continuously refresh token in background)
+    token_fetcher = ContinuousTokenFetcher(TARGET_URL, login, password)
+    token_fetcher.login_to_kepler()  # Perform login
+    token_fetcher.start()  # Start the thread
+    
+    # Wait for the first token to be received
+    Logger.log("İlk API Token bekleniyor...")
+    if not token_fetcher.wait_for_first_token(timeout=120):
+        Logger.log("Token alınamadı, program sonlandırılıyor.")
+        token_fetcher.stop()
+        exit(1)
+    
+    Logger.log("Token alındı, arka planda sürekli yenilenmeye devam edecek.")
 
     # Wait untill 45 secs before the registration starts.
     if start_time is not None:
@@ -109,27 +121,23 @@ def main():
             Logger.log(f"Ders seçimine 45 saniye kalana kadar bekleniyor ({delta} saniye)...")
             sleep(delta)
 
-    # Fetch auth token, until 30 secs before the registration starts.
-    token = ""
-    while start_time is None or (start_time - datetime.now()).total_seconds() > 30 or len(token) == 0:
-        new_token = token_fetcher.fetch_token()
-        if "ERROR" not in new_token:
-            token = new_token
-
-        sleep(.1)
-
-        # If the start time is not set, break the loop on first successful token fetch.
-        if start_time is None and "ERROR" not in token:
-            break
-
     # Wait untill the registration starts. (Add a buffer to prevent any possible errors.)
+<<<<<<< HEAD
     try:
         token_fetcher.driver.minimize_window()#can cause crashes on systems using wayland and similar desktop managers since they dont support minimizing
     except:
         print("Can't minimize window")
+=======
+    if token_fetcher.driver:
+        try:
+            token_fetcher.driver.minimize_window()
+        except:
+            pass
+>>>>>>> 356ee1ea43f490828949f1b572aa7e520f4369f9
     Logger.log("Ders seçimine kadar bekleniliyor (Chrome penceresini kapatmayın)...")
     
-    request_manager = RequestManager(token, COURSE_SELECTION_URL, COURSE_TIME_CHECK_URL)
+    # Pass token getter function to RequestManager (will get fresh token each time)
+    request_manager = RequestManager(token_fetcher.get_token, COURSE_SELECTION_URL, COURSE_TIME_CHECK_URL)
 
     # If not testing, wait untill the registration by checking the HTTP request.
     if not test_mode:
@@ -140,15 +148,21 @@ def main():
         
         # Now, instead of waiting another 15 seconds, check the time every `DELAY_BETWEEN_TIME_CHECKS` seconds, to account for the difference in time between the server and the local machine.
         Logger.log("Ders seçiminin başlaması bekleniyor...")
+        wt = 0
         while request_manager.check_course_selection_time() is False:
             sleep(DELAY_BETWEEN_TIME_CHECKS)
+            wt += DELAY_BETWEEN_TIME_CHECKS
+            print(wt)
+            if wt >= MAX_EXTRA_WAIT_TIME:
+                Logger.log(f"Ders seçimi zaman kontrolü maksimum bekleme süresine ({MAX_EXTRA_WAIT_TIME} saniye) ulaştı, bekleme sonlandırılıyor.")
+                break
     # If testing, wait for the time manually.
     else:
         delta = (start_time - datetime.now()).total_seconds() + 0.1
         if delta > 0:
             sleep(delta)
 
-    Logger.log("Dersler Seçiliyor...")
+    Logger.log("Dersler Seçiliyor (Token arka planda sürekli yenileniyor)...")
     course_selection_start_time = datetime.now()
     # Select courses, do it until `DURATION_TO_SPAM` secs after the registration starts.
     while start_time is None or (datetime.now() - course_selection_start_time).total_seconds() < SPAM_DUR:
@@ -166,6 +180,9 @@ def main():
             Logger.log("Alınamayan dersler tekrar denenecek fakat test modunda olduğundan dolayı bu aşama geçiliyor...")
             print()
             break
+
+    # Stop the token fetcher
+    token_fetcher.stop()
 
     if not test_mode and (not len(crn_list) == 0 or not len(scrn_list) == 0):
         Logger.log(f"Ders seçimi zaman aşımından dolayı sonlandırıldı. Alınamayan dersler: {crn_list}, Bırakılamayan Dersler {scrn_list}.")
