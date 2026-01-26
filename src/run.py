@@ -10,7 +10,11 @@ import os
 import argparse
 import json
 from sys import exit
-
+import sys
+if sys.stdout:
+    sys.stdout.reconfigure(encoding='utf-8', line_buffering=True)
+if sys.stderr:
+    sys.stderr.reconfigure(encoding='utf-8', line_buffering=True)
 # === CONSTANTS ===
 CONFIG_FILE_PATH = "data/config.json"
 TARGET_URL = "https://obs.itu.edu.tr/ogrenci/DersKayitIslemleri/DersKayit"
@@ -122,18 +126,12 @@ def main():
             sleep(delta)
 
     # Wait untill the registration starts. (Add a buffer to prevent any possible errors.)
-<<<<<<< HEAD
+
     try:
         token_fetcher.driver.minimize_window()#can cause crashes on systems using wayland and similar desktop managers since they dont support minimizing
     except:
         print("Can't minimize window")
-=======
-    if token_fetcher.driver:
-        try:
-            token_fetcher.driver.minimize_window()
-        except:
-            pass
->>>>>>> 356ee1ea43f490828949f1b572aa7e520f4369f9
+
     Logger.log("Ders seçimine kadar bekleniliyor (Chrome penceresini kapatmayın)...")
     
     # Pass token getter function to RequestManager (will get fresh token each time)
