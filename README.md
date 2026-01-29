@@ -1,3 +1,6 @@
+Readme dosyasini degistirmeye vaktim olmadi itu-ders-secinin ki duruyor
+Eger release i kullancaksaniz ekstra bir kuruluma ihtiyaciniz yok calistirmaniz yeterli
+
 # **İTÜ Kepler Ders Seçici**
 
 ![GitHub repo size](https://img.shields.io/github/repo-size/AtaTrkgl/itu-ders-secici)
