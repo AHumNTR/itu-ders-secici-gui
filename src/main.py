@@ -86,13 +86,17 @@ class MainWindow(QWidget):
         scrn_buttons.addWidget(add_scrn_btn)
         scrn_buttons.addWidget(del_scrn_btn)
 
-        courses_layout = QVBoxLayout()
-        courses_layout.addWidget(QLabel("CRN List:"))
-        courses_layout.addWidget(self.crn_list)
-        courses_layout.addLayout(crn_buttons)
-        courses_layout.addWidget(QLabel("SCRN List:"))
-        courses_layout.addWidget(self.scrn_list)
-        courses_layout.addLayout(scrn_buttons)
+        courses_layout = QHBoxLayout()
+        crn_layout= QVBoxLayout()
+        crn_layout.addWidget(QLabel("CRN List:"))
+        crn_layout.addWidget(self.crn_list)
+        crn_layout.addLayout(crn_buttons)
+        scrn_layout= QVBoxLayout()
+        scrn_layout.addWidget(QLabel("SCRN List:"))
+        scrn_layout.addWidget(self.scrn_list)
+        scrn_layout.addLayout(scrn_buttons)
+        courses_layout.addLayout(crn_layout)
+        courses_layout.addLayout(scrn_layout)
 
         # --- Save Button ---
         save_button = QPushButton("Save Config")
@@ -102,8 +106,13 @@ class MainWindow(QWidget):
         self.output = QTextEdit()
         self.output.setReadOnly(True)
         
+        
         start_button = QPushButton("Start Script")
         start_button.clicked.connect(self.start_ders_secici)
+        test_button = QPushButton("Start Test Script")
+        test_button.clicked.connect(self.start_test)
+        stop_button = QPushButton("Stop Script")
+        stop_button.clicked.connect(self.stop_ders_secici)
 
         self.process = QProcess(self)
         self.process.readyReadStandardOutput.connect(self.handle_stdout)
@@ -124,15 +133,24 @@ class MainWindow(QWidget):
         
         main_layout.addWidget(save_button)
         main_layout.addWidget(QLabel("<b>Output Log</b>"))
-        main_layout.addWidget(self.output)
+        main_layout.addWidget(self.output,stretch=1)
         main_layout.addWidget(start_button)
+        main_layout.addWidget(test_button)
+        main_layout.addWidget(stop_button)
+        
 
         self.setLayout(main_layout)
         
         # Load initial data
         self.load_json()
 
-    # --- Helper Methods (Moved from JsonForm) ---
+    def on_test_toggle(self, checked):
+        if checked:
+            self.test_mode.setText("ON")
+            self.test_mode.setStyleSheet("background-color: #4CAF50; color: white; font-size: 16px; padding: 10px;")
+        else:
+            self.test_mode.setText("OFF")
+            self.test_mode.setStyleSheet("background-color: lightgray; color: black; font-size: 16px; padding: 10px;")
     def add_item(self, list_widget):
         text, ok = QInputDialog.getText(self, "Add Item", "Enter value:")
         if ok and text.strip():
@@ -202,17 +220,25 @@ class MainWindow(QWidget):
             self.output.append(f"<span style='color:red;'>Error loading config: {e}</span>")
 
     # --- Process Methods ---
-    def start_ders_secici(self):
+    def stop_ders_secici(self):
+        self.process.close()
+    def start_test(self):
+        self.start_ders_secici(True)
+    def start_ders_secici(self,test=False):
         self.output.append("starting itu-ders-secici...")
         self.save_json()
-        
+        self.process.close()
+        #close the proceess before starting a new one (it doesnt seem to throw an error if the process isnt running so i will leave it like this for now)
         # Check if we are running as a frozen executable (PyInstaller)
         if getattr(sys, 'frozen', False):
             executable = sys.executable
-            arguments = ["--worker"]
+            #feels wrong doing it this way but idk python enough :D
+            if(test): arguments = ["--worker","-test"]
+            else: arguments = ["--worker"]
         else:
             executable = sys.executable
-            arguments = ["-u", "src/run.py"]
+            if(test): arguments = ["-u", "src/run.py", "-test"]
+            else: arguments = ["-u", "src/run.py"]
             
         self.process.start(executable, arguments)
 
@@ -234,7 +260,6 @@ if __name__ == "__main__":
             
         # Remove the flag so argparse in run.py doesn't crash
         sys.argv.remove("--worker")
-        
         # Run the logic
         run.main()
         sys.exit(0)
