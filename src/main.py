@@ -119,6 +119,7 @@ class MainWindow(QWidget):
         self.process.readyReadStandardOutput.connect(self.handle_stderr)
 
         # --- Main Layout Assembly ---
+        actual_main_layout=QHBoxLayout()
         main_layout = QVBoxLayout()
         
         # Add sections
@@ -132,14 +133,17 @@ class MainWindow(QWidget):
         main_layout.addLayout(courses_layout)
         
         main_layout.addWidget(save_button)
-        main_layout.addWidget(QLabel("<b>Output Log</b>"))
-        main_layout.addWidget(self.output,stretch=1)
+        
         main_layout.addWidget(start_button)
         main_layout.addWidget(test_button)
         main_layout.addWidget(stop_button)
+        actual_main_layout.addLayout(main_layout)
+        actual_main_layout.addWidget(QLabel("<b>Output Log</b>"))
+        actual_main_layout.addWidget(self.output,stretch=10)
+        self.output.setMinimumWidth(400)
         
 
-        self.setLayout(main_layout)
+        self.setLayout(actual_main_layout)
         
         # Load initial data
         self.load_json()
